@@ -28,7 +28,7 @@ typedef struct ELFHeader_s
 {
     uint32_t uid;
     uint32_t totalELFSize;
-    char     md5[33];
+    char     md5[32];
 } ELFHeader_t;
 #pragma pack()
 
