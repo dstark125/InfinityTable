@@ -586,8 +586,8 @@ static bool FlashyFadeUpdate(bool useRainbow)
         //- Get random flashes locations on the table
         for (int i = 0; i < FLASHY_RAINBOW_NUM_FLASHES; i++)
         {
-            on_strip[i] = random8(0, NUM_STRIPS - 1);
-            on_led[i]   = random8(0, NUM_LEDS_PER_STRIP - 1);
+            on_strip[i] = random8(0, NUM_STRIPS);
+            on_led[i]   = random8(0, NUM_LEDS_PER_STRIP);
         }
         //- Fade all of the current LEDs
         for (int strip_idx = 0; strip_idx < NUM_STRIPS; strip_idx++)
@@ -753,8 +753,8 @@ static void Fire2018(FireLEDs_t* fire, CRGBPalette16 pal)
             uint8_t dim = noise[x][y];
 
             // This number is critical
-            // If it´s to low (like 1.1) the fire dosn´t go up far enough.
-            // If it´s to high (like 3) the fire goes up too high.
+            // If itÂ´s to low (like 1.1) the fire dosnÂ´t go up far enough.
+            // If itÂ´s to high (like 3) the fire goes up too high.
             // It depends on the framerate which number is best.
             // If the number is not right you loose the uplifting fire clouds
             // which seperate themself while rising up.
