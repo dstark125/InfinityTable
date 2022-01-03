@@ -8,6 +8,7 @@
 // Import required libraries
 #include <WiFi.h>
 #include <AsyncTCP.h>
+#include <ESPmDNS.h>
 #include <ESPAsyncWebServer.h>
 #include "html.h"
 #include "LEDControl.h"
@@ -30,6 +31,9 @@ static void SendStatusMessage(void)
 {
     String status;
     const LEDControl_Config_t * led_config;
+    float loop_fps;
+    float draw_fps;
+    LEDControl_GetFPS(&loop_fps, &draw_fps);
     led_config = LEDControl_GetConfig();
     //- Send key=value piped together
     status = "MB=";
@@ -44,6 +48,9 @@ static void SendStatusMessage(void)
     status += led_config->green;
     status += "|Blue=";
     status += led_config->blue;
+    status += "|Info=";
+    status += "Loop FPS: " + String(loop_fps) + " - Draw FPS: " + String(draw_fps) + " - IP: " + WifiControl_GetIPAddress();
+
     //- textAll sends to all clients, so works for all connected browsers
     ws.textAll(status);
 }
@@ -250,7 +257,7 @@ static String Processor(const String& var)
 void WifiControl_Setup(void)
 {
     Serial.print("Connecting to ");
-    Serial.println(SSID);
+    Serial.print(SSID);
     //- Start wifi stack
     WiFi.begin(SSID, PASSWORD);
     //- Wait until connected
@@ -258,11 +265,21 @@ void WifiControl_Setup(void)
         delay(500);
         Serial.print(".");
     }
+    Serial.println(" Connected.");
+    //- Setup multicast DNS for easy access
+    if (MDNS.begin(MDNS_NAME)) {
+        Serial.print("MDNS started at :");
+        Serial.println(MDNS_NAME);
+    }
+    else
+    {
+        Serial.println("Error starting mDNS");
+    }
 
     // Print local IP address and start web server
     Serial.println("");
     Serial.println("WiFi connected.");
-    Serial.println("IP address: ");
+    Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
     InitWebSocket();

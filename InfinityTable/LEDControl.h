@@ -50,6 +50,7 @@ void LEDControl_SetRed(uint8_t red);
 void LEDControl_SetGreen(uint8_t green);
 void LEDControl_SetBlue(uint8_t blue);
 
+void LEDControl_GetFPS(float* loopFPS, float* drawFPS);
 //- Status
 const LEDControl_Config_t * LEDControl_GetConfig(void);
 

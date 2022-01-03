@@ -2,8 +2,9 @@
 
 //- WiFi
 #define WIFI_STATUS_SEND_MS (1000)
-#define SSID     ("YOUR_WIFI_SSIID")
-#define PASSWORD ("YOUR_WIFI_PASSWORD")
+#define SSID                ("YOUR_WIFI_SSID")
+#define PASSWORD            ("YOUR_WIFI_PASSWORD")
+#define MDNS_NAME           ("infinitytable")
 
 //- LEDs
 #define TOTAL_LEDS_PER_STRIP            (200) //- There are really 202, but we don't need to write the last 2 black

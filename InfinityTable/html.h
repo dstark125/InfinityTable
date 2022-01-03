@@ -119,6 +119,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         <label for="mode12">OFF</label>
     <hr class="dotted">
         <button type="button" id= "softwareUpdateButton">Update Software</button>
+        <label><span id="informationLabel"></span></label>
   </div>
 <script>
     class SequencedControl {
@@ -200,6 +201,10 @@ const char index_html[] PROGMEM = R"rawliteral(
                     radioMode = document.getElementById("mode" + split_equal[1]);
                     radioMode.checked = true;
                 }
+            }
+            if (split_equal[0] == "Info")
+            {
+                document.getElementById("informationLabel").innerHTML = split_equal[1];
             }
             if (split_equal[0] == "Log")
             {

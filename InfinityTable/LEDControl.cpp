@@ -80,6 +80,10 @@ typedef struct LEDControl_Data_s
     int                 BRsize;
     int                 RGsize;
     int                 GBsize;
+    //- FPS Counting Trackers
+    uint32_t            drawCounter;
+    uint32_t            loopCounter;
+    uint32_t            counterTime;
 }LEDControl_Data_t;
 
 CRGB  g_RAWLEDS[NUM_STRIPS][TOTAL_LEDS_PER_STRIP] = { 0 };
@@ -753,8 +757,8 @@ static void Fire2018(FireLEDs_t* fire, CRGBPalette16 pal)
             uint8_t dim = noise[x][y];
 
             // This number is critical
-            // If itÂ´s to low (like 1.1) the fire dosnÂ´t go up far enough.
-            // If itÂ´s to high (like 3) the fire goes up too high.
+            // If it´s to low (like 1.1) the fire dosn´t go up far enough.
+            // If it´s to high (like 3) the fire goes up too high.
             // It depends on the framerate which number is best.
             // If the number is not right you loose the uplifting fire clouds
             // which seperate themself while rising up.
@@ -1029,6 +1033,8 @@ static float GetAmbientModeAlpha(Microphone_Spectrum_t* spectrum)
 
 static bool ModeMicrophoneAmbientUpdate(void)
 {
+    static bool last_has_color = false;
+    bool has_color = false;
     bool needs_redraw = false;
     //- Check for microphone spectrum, returns true if we get a new one
     if (Microphone_GetNewSpectrum(&g_data.spectrum, MICROPHONE_TIMEOUT))
@@ -1061,12 +1067,17 @@ static bool ModeMicrophoneAmbientUpdate(void)
                 fract8 lerp_fastled = FloatLerpToFastLED(lerp_t);
                 for (uint32_t strip_idx = 0; strip_idx < NUM_STRIPS; strip_idx++)
                 {
+                    CRGB color;
                     //- Fill data
-                    g_data.leds[strip_idx][wall->firstIdx + led_idx] = g_data.solidColor.lerp8(CRGB::Black, lerp_fastled);
+                    color = g_data.solidColor.lerp8(CRGB::Black, lerp_fastled);
+                    has_color |= ((color.r != 0) || (color.g != 0) || (color.b != 0));
+                    g_data.leds[strip_idx][wall->firstIdx + led_idx] = color;
                 }
             }
         }
-        needs_redraw = true;
+        //- If we have color, or we had color and now is black, redraw
+        needs_redraw = (has_color || last_has_color);
+        last_has_color = has_color;
     }
     return needs_redraw;
 }
@@ -1103,7 +1114,7 @@ static bool TransitionModes(LEDControl_Mode_t fromMode, LEDControl_Mode_t toMode
 {
     Log_Println("Transitioning modes");
     //- Fade out the old mode
-    for (int32_t i = g_config.maxBrightness; i > 0; i-=10)
+    for (int32_t i = g_config.maxBrightness; i > 0; i-=25)
     {
         if (modeData[fromMode].modeUpdateFunc != NULL)
         {
@@ -1115,7 +1126,7 @@ static bool TransitionModes(LEDControl_Mode_t fromMode, LEDControl_Mode_t toMode
     //- Initialize new mode
     (void)modeData[toMode].modeInitFunc();
     //- Fade in new mode
-    for (int32_t i = 0; i < g_config.maxBrightness; i+=10)
+    for (int32_t i = 0; i < g_config.maxBrightness; i+=25)
     {
         if (modeData[toMode].modeUpdateFunc != NULL)
         {
@@ -1223,8 +1234,8 @@ void LEDControl_Setup(void)
         CheckSolidColor();
         FastLED.show();
     }
-    //- Initialize text
-    strcpy(g_config.displayText, "");
+    //- Initialize text - make it in sync with HTML
+    strcpy(g_config.displayText, "Infinity Table");
 
     //- Go into normal operation
     Log_Println("Starting normal operation.");
@@ -1247,6 +1258,9 @@ void LEDControl_Setup(void)
 //- Periodic Update Function ---------------------------------------------------------
 //------------------------------------------------------------------------------------
 
+#ifdef RANDOM_MODE_TRANSITION 
+LEDControl_Mode_t transition_modes[6] = { LED_MODE_PARALLELOGRAM, LED_MODE_TEXT, LED_MODE_RAINBOW, LED_MODE_FLASHY_RAINBOW, LED_MODE_FIRE, LED_MODE_FLASHY_COLOR };
+#endif
 void LEDControl_Update(void)
 {
     bool call_show = false;
@@ -1270,6 +1284,16 @@ void LEDControl_Update(void)
     }
     else
     {
+#ifdef RANDOM_MODE_TRANSITION 
+        static unsigned long last_transition = 0;
+        static int t_mode = 0;
+        if (millis() - last_transition > 5000)
+        {
+            g_config.mode = transition_modes[t_mode];
+            t_mode = (t_mode + 1) % 6;
+            last_transition = millis();
+        }
+#endif
         //- No mode change, just update current mode
         if (modeData[g_data.curMode].modeUpdateFunc != NULL)
         {
@@ -1281,11 +1305,13 @@ void LEDControl_Update(void)
     if (call_show)
     {
         FastLED.show();
+        g_data.drawCounter++;
     }
     else
     {
         FastLED.delay(0);
     }
+    g_data.loopCounter++;
 }
 
 //------------------------------------------------------------------------------------
@@ -1342,11 +1368,22 @@ void LEDControl_SetDisplayText(const char* text)
     g_data.displayTextDirty = true;
 }
 
+void LEDControl_GetFPS(float* loopFPS, float* drawFPS)
+{
+    uint32_t time_now = millis();
+    float elapsed_time = (float)(time_now - g_data.counterTime) / 1000.0f;
+    *loopFPS = (float)g_data.loopCounter / elapsed_time;
+    *drawFPS = (float)g_data.drawCounter / elapsed_time;
+    g_data.loopCounter = 0U;
+    g_data.drawCounter = 0U;
+    g_data.counterTime = time_now;
+}
+
 const LEDControl_Config_t * LEDControl_GetConfig(void)
 {
     //- Doing a pointer here because the text is large
     //- Anybody getting this pointer should NOT assign to it
-    return &g_config;
+    return (const LEDControl_Config_t*)&g_config;
 }
 
 void LEDControl_SetFastLEDRandomSeed(void)
